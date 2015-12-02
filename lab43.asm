@@ -14,19 +14,18 @@ DSEG SEGMENT PARA PUBLIC "DATA"
 	
 	Array DW 10*10 DUP ('0')
 
-	StringBuffer DB 4, ?, 4 DUP('*')
+	StringBuffer DB 6, ?, 6 DUP('*')
 	EnterCount DB "Enter count of array elements (Min: 2, Max 10): $"
-	EnterElement DB "Enter number in range from -320 to 320 of element [$"
+	EnterElement DB "Enter number in range from -32766 to 32767 of element [$"
 	TryAgainMsg DB "Enter 1 to start again: $"
-	ErrorSymbol DB "Dont enter symbols!",10,13,"Correct format is [+-][0-9]",10,13, "From 2 to 10 for array size", 10, 13,"From -320 to 320 for elements", 10, 13,"$"	
-	ErrorNumber DB "Incorrect number!",10,13,"Correct format is [+-][0-9]",10,13, "From 2 to 10 for array size", 10, 13,"From -320 to 320 for elements", 10, 13,"$"	
+	ErrorSymbol DB "Dont enter symbols!",10,13,"Correct format is [+-][0-9]",10,13, "From 2 to 10 for array size", 10, 13,"From 32766 to 32767 for elements", 10, 13,"$"	
+	ErrorNumber DB "Incorrect number!",10,13,"Correct format is [+-][0-9]",10,13, "From 2 to 10 for array size", 10, 13,"From 32766 to 32767 for elements", 10, 13,"$"	
+	EnterAgain DB "Enter element again: $"
 	ArraySizeError DB "Array size error. Enter values in range [-2; 10]", 10, 13, "$"
 	ElementMsg DB "Enter element to find: $"
 	ResultMsg DB 10, 13, "Your result is: $"
 	NoneResult DB "None $"
 	
-	TOP_LIMIT DW 320
-	BOTTOM_LIMIT DW -320
 	
 	TEN_DW DW 10
 		
@@ -36,8 +35,7 @@ DSEG SEGMENT PARA PUBLIC "DATA"
 	IS_NECESSARY DW 0
 	IS_ELEMENT DW 0 
 	
-	ROW DW 0 
-	COLUMN DW 0 
+	IS_ERROR DW 0 
 	
 DSEG ENDS
 
@@ -262,61 +260,73 @@ CSEG SEGMENT PARA PUBLIC "CODE"
 	
 	READ_ELEMENT PROC	
 	
-		PUSH DX
-		LEA DX, EnterElement
+		CMP IS_ERROR, 0 
+		JE NO_ERROR
+		
+		LEA DX, EnterAgain
 		MOV AH, 9
 		INT 21h
-		POP DX
-					
-		MOV NumberBuffer, DX
-		PUSH CX
-		PUSH DX
-		CALL PRINT_NUMBER
-		POP DX
-		POP CX
-					
-		MOV AX, ']'
-		INT 29h	
-					
-		MOV AX, '['
-		INT 29h	
+		JMP READ_EL
+	
+		NO_ERROR:  
+			PUSH DX
+			LEA DX, EnterElement
+			MOV AH, 9
+			INT 21h
+			POP DX
+						
+			MOV NumberBuffer, DX
+			PUSH CX
+			PUSH DX
+			CALL PRINT_NUMBER
+			POP DX
+			POP CX
+						
+			MOV AX, ']'
+			INT 29h	
+						
+			MOV AX, '['
+			INT 29h	
+			
+			PUSH DX
+			
+			MOV DX, ArraySize
+			SUB DX, CX
+			INC DX
+			
+			MOV NumberBuffer, DX
+			PUSH CX
+			PUSH DX
+			CALL PRINT_NUMBER
+			POP DX
+			POP CX
+			
+			MOV AX, ']'
+			INT 29h	
+			MOV AX, ':'
+			INT 29h	
+			
+			POP DX
 		
-		PUSH DX
-		
-		MOV DX, ArraySize
-		SUB DX, CX
-		INC DX
-		
-		MOV NumberBuffer, DX
-		PUSH CX
-		PUSH DX
-		CALL PRINT_NUMBER
-		POP DX
-		POP CX
-		
-		MOV AX, ']'
-		INT 29h	
-		MOV AX, ':'
-		INT 29h	
-		
-		POP DX
-		
-		PUSH DX
-		LEA DX, StringBuffer
-		MOV AH, 10
-		INT 21h
-		
-		MOV AL, 10
-		INT 29h
-		MOV AL, 13
-		INT 29h	
-		
-		PUSH CX
-		CALL CONVERT_NUMBER
-		POP CX
-		MOV AX, NumberBuffer
-		
-		POP DX
+		READ_EL:
+			PUSH DX
+			LEA DX, StringBuffer
+			MOV AH, 10
+			INT 21h
+			
+			MOV AL, 10
+			INT 29h
+			MOV AL, 13
+			INT 29h	
+			
+			PUSH CX
+			CALL CONVERT_NUMBER
+			POP CX
+			MOV AX, NumberBuffer
+			MOV DX, 0 
+			MOV IS_ERROR, DX 
+			
+			POP DX
 		
 		RET 		
 	READ_ELEMENT ENDP
@@ -357,7 +367,7 @@ CSEG SEGMENT PARA PUBLIC "CODE"
 				JL ERROR_SYMBOL
 			CMP AL, 9
 				JG ERROR_SYMBOL
-			JMP NO_ERROR
+			JMP NO_ERR
 			
 			ERROR_SYMBOL:
 				LEA DX, ErrorSymbol
@@ -388,10 +398,12 @@ CSEG SEGMENT PARA PUBLIC "CODE"
 				RET 
 			
 			ERROR_ELEMENTS:
+				MOV AX, 1 
+				MOV IS_ERROR, AX 
 				CALL READ_ELEMENT
 				RET
 				
-			NO_ERROR:
+			NO_ERR:
 			
 				CMP CL, StringBuffer + 1
 				JE END_IMUL
@@ -408,10 +420,15 @@ CSEG SEGMENT PARA PUBLIC "CODE"
 				
 				POP CX
 			
+				CLC 
+			
 				END_IMUL:
 					DEC SI
 					ADD BX, AX
-					JO ERROR_NUMBER
+					
+					JC ERROR_NUMBER
+					CMP BX, 32767 
+					JA ERROR_NUMBER
 			
 		LOOP SYMBOL_LOOP
 		
@@ -423,12 +440,7 @@ CSEG SEGMENT PARA PUBLIC "CODE"
 			NEG BX
 			JMP SAVE_RESULT
 		
-		SAVE_RESULT:
-			CMP BX, TOP_LIMIT
-			JG ERROR_NUMBER
-			CMP BX, BOTTOM_LIMIT
-			JL ERROR_NUMBER
-			
+		SAVE_RESULT:			
 			MOV NumberBuffer, BX
 			RET
 		

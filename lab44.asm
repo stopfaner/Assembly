@@ -14,17 +14,14 @@ DSEG SEGMENT PARA PUBLIC "DATA"
 	
 	Array DW 100, ?, 100 DUP ('0')
 
-	StringBuffer DB 4, ?, 4 DUP('*')
+	StringBuffer DB 7, ?, 7 DUP('*')
 	EnterCount DB "Enter count of array elements (Min: 2, Max 100): $"
-	EnterElement DB "Enter number in range from -320 to 320 of element [$"
+	EnterElement DB "Enter number in range from -32766 to 32767 of element [$"
 	TryAgainMsg DB "Enter 1 to start again: $"
-	ErrorSymbol DB "Dont enter symbols!",10,13,"Correct format is [+-][0-9]",10,13, "From 2 to 100 for array size", 10, 13,"From -320 to 320 for elements", 10, 13,"$"	
-	ErrorNumber DB "Incorrect number!",10,13,"Correct format is [+-][0-9]",10,13, "From 2 to 100 for array size", 10, 13,"From -320 to 320 for elements", 10, 13,"$"	
+	ErrorSymbol DB "Dont enter symbols!",10,13,"Correct format is [+-][0-9]",10,13, "From 2 to 100 for array size", 10, 13,"From -32766 to 32767 for elements", 10, 13,"$"	
+	ErrorNumber DB "Incorrect number!",10,13,"Correct format is [+-][0-9]",10,13, "From 2 to 100 for array size", 10, 13,"From -32766 to 32767 for elements", 10, 13,"$"	
 	ArraySizeError DB "Array size error. Enter values in range [-2; 100]", 10, 13, "$"
-	
-	TOP_LIMIT DW 320
-	BOTTOM_LIMIT DW -320
-	
+
 	TEN_DW DW 10
 		
 	NumberBuffer DW 0
@@ -134,7 +131,7 @@ CSEG SEGMENT PARA PUBLIC "CODE"
 		RET		
 	READ_ARRAY ENDP 
 	
-	SORT_ELEMENTS PROC
+	SELECTION_SORT PROC
 	
 		MOV CX, ArraySize
 		SUB CX, 1 
@@ -176,7 +173,7 @@ CSEG SEGMENT PARA PUBLIC "CODE"
 	
 		RET
 	
-	SORT_ELEMENTS ENDP
+	SELECTION_SORT ENDP
 	
 	INSERTION_SORT PROC
 	
@@ -384,7 +381,10 @@ CSEG SEGMENT PARA PUBLIC "CODE"
 				END_IMUL:
 					DEC SI
 					ADD BX, AX
-					JO ERROR_NUMBER
+					
+					JC ERROR_NUMBER
+					CMP BX, 32767 
+					JA ERROR_NUMBER
 			
 		LOOP SYMBOL_LOOP
 		
@@ -396,12 +396,7 @@ CSEG SEGMENT PARA PUBLIC "CODE"
 			NEG BX
 			JMP SAVE_RESULT
 		
-		SAVE_RESULT:
-			CMP BX, TOP_LIMIT
-			JG ERROR_NUMBER
-			CMP BX, BOTTOM_LIMIT
-			JL ERROR_NUMBER
-			
+		SAVE_RESULT:			
 			MOV NumberBuffer, BX
 			RET
 		

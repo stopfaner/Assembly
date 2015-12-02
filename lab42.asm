@@ -14,18 +14,15 @@ DSEG SEGMENT PARA PUBLIC "DATA"
 	
 	Array DW 100, ?, 100 DUP ('0')
 
-	StringBuffer DB 4, ?, 4 DUP('*')
+	StringBuffer DB 7, ?, 7 DUP('*')
 	EnterCount DB "Enter count of array elements (Min: 2, Max 100): $"
-	EnterElement DB "Enter number in range from -320 to 320 of element [$"
+	EnterElement DB "Enter number in range from -32766 to 32767 of element [$"
 	TryAgainMsg DB "Enter 1 to start again: $"
-	ErrorSymbol DB "Dont enter symbols!",10,13,"Correct format is [+-][0-9]",10,13, "From 2 to 100 for array size", 10, 13,"From -320 to 320 for elements", 10, 13,"$"	
-	ErrorNumber DB "Incorrect number!",10,13,"Correct format is [+-][0-9]",10,13, "From 2 to 100 for array size", 10, 13,"From -320 to 320 for elements", 10, 13,"$"	
-	ArraySizeError DB "Array size error. Enter values in range [-2; 100]", 10, 13, "$"
+	ErrorSymbol DB "Dont enter symbols!",10,13,"Correct format is [+-][0-9]",10,13, "From 2 to 100 for array size", 10, 13,"From -32767 to 32768 for elements", 10, 13,"$"	
+	ErrorNumber DB "Incorrect number!",10,13,"Correct format is [+-][0-9]",10,13, "From 2 to 100 for array size", 10, 13,"From -32767 to 32768 for elements", 10, 13,"$"	
+	ArraySizeError DB "Array size error. Enter values in range [2; 100]", 10, 13, "$"
 	ChoiceMsg DB "Put 1 to find Maximum value, another key to find minimum: ", 10, 13, "$"
 	ResultMsg DB 10, 13, "Your result is: $"
-	
-	TOP_LIMIT DW 320
-	BOTTOM_LIMIT DW -320
 	
 	TEN_DW DW 10
 		
@@ -33,7 +30,7 @@ DSEG SEGMENT PARA PUBLIC "DATA"
 	
 	IS_ELEMENTS DW 0
 	IS_MAXIMUM DW 0
-	ELEMENT DW 0 
+	ELEMENT DW 0  
 	
 DSEG ENDS
 
@@ -64,15 +61,15 @@ CSEG SEGMENT PARA PUBLIC "CODE"
 		
 		MOV AX, NumberBuffer
 		
-		PUSH AX			
-			CALL READ_CHIOCE
-		POP AX
-		
 		MOV ArraySize, AX	
 		CMP ArraySize, 1
 		JLE ERROR_SIZE
 		CMP ArraySize, 100
 		JG ERROR_SIZE 
+		
+		PUSH AX			
+			CALL READ_CHIOCE
+		POP AX	
 		
 		MOV AL, 10
 		INT 29h
@@ -155,6 +152,8 @@ CSEG SEGMENT PARA PUBLIC "CODE"
 					
 			POP DI
 			MOV Array[DI], AX
+			MOV AX, Array[DI]
+			MOV ELEMENT, AX
 			ADD DI, 2
 			POP CX
 			
@@ -329,7 +328,9 @@ CSEG SEGMENT PARA PUBLIC "CODE"
 				END_IMUL:
 					DEC SI
 					ADD BX, AX
-					JO ERROR_NUMBER
+					JC ERROR_NUMBER
+					CMP BX, 32767 
+					JA ERROR_NUMBER
 			
 		LOOP SYMBOL_LOOP
 		
@@ -341,12 +342,7 @@ CSEG SEGMENT PARA PUBLIC "CODE"
 			NEG BX
 			JMP SAVE_RESULT
 		
-		SAVE_RESULT:
-			CMP BX, TOP_LIMIT
-			JG ERROR_NUMBER
-			CMP BX, BOTTOM_LIMIT
-			JL ERROR_NUMBER
-			
+		SAVE_RESULT:			
 			MOV NumberBuffer, BX
 			RET
 		
